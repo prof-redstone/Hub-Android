@@ -3,6 +3,14 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
+      Permission SPÉCIALE : ne s'accorde pas via requestPermissions().
+      L'utilisateur doit l'activer manuellement dans les réglages du système.
+      D'où tools:ignore, qui désactive le lint sur cette permission "protégée".
+    -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!--
       Android 11+ (API 30) : sans ce bloc, getLaunchIntentForPackage() renvoie null
       même pour une app installée. Toute app qu'on compte lancer DOIT être déclarée ici.
       Cette déclaration n'expose aucune donnée : elle dit juste "cette app m'intéresse".

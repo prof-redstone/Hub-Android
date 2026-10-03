@@ -12,12 +12,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +43,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 import tomd.ovh.data.WatchedApp
 import tomd.ovh.data.WatchedApps
+import tomd.ovh.data.UsageStats
+import tomd.ovh.data.formatDuration
 import tomd.ovh.data.launchAppOrWarn
 import tomd.ovh.ui.theme.HubTheme
 
@@ -66,15 +70,28 @@ fun HubScreen(modifier: Modifier = Modifier) {
     // dans AppButton, ça remet tous les timers à zéro d'un coup.
     var resetKey by remember { mutableIntStateOf(0) }
 
+    var hasPermission by remember { mutableStateOf(UsageStats.hasPermission(context)) }
+    var usageMs by remember { mutableStateOf(emptyMap<String, Long>()) }
+
     val lifecycleOwner = remember(context) { context.findActivity() }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 resetKey++
+                // L'utilisateur a pu accorder la permission dans les réglages entre-temps.
+                hasPermission = UsageStats.hasPermission(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // queryEvents() est une lecture disque : on le sort du corps de la fonction.
+    LaunchedEffect(resetKey, hasPermission) {
+        if (!hasPermission) return@LaunchedEffect
+        usageMs = WatchedApps.all.associate { app ->
+            app.packageName to UsageStats.todayForegroundMs(context, app.packageName)
+        }
     }
 
     Column(
@@ -88,14 +105,34 @@ fun HubScreen(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.headlineLarge
         )
 
+        if (!hasPermission) {
+            PermissionBanner(onClick = { UsageStats.requestPermission(context) })
+        }
+
         for (app in WatchedApps.all) {
             AppButton(
                 app = app,
                 resetKey = resetKey,
+                usageMs = usageMs[app.packageName] ?: 0L,
                 onLaunch = { context.launchAppOrWarn(app) },
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+@Composable
+private fun PermissionBanner(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        Text(
+            text = "Autoriser la lecture du temps d'écran",
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
@@ -110,6 +147,7 @@ fun HubScreen(modifier: Modifier = Modifier) {
 fun AppButton(
     app: WatchedApp,
     resetKey: Int,
+    usageMs: Long,
     onLaunch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -136,37 +174,47 @@ fun AppButton(
 
     val progress = 1f - (remainingMs.toFloat() / app.frictionMs.toFloat()).coerceIn(0f, 1f)
 
-    Box(
-        modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(app.trackColor)
-            .clickable {
-                if (running) return@clickable
-
-                if (remainingMs == 0L) {
-                    remainingMs = app.frictionMs
-                    onLaunch()
-                } else {
-                    running = true
-                }
-            }
-    ) {
-        // CentreStart = la barre grandit depuis la gauche.
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .fillMaxWidth(progress)
-                .background(app.progressColor)
-        )
-
+    Column(modifier = modifier) {
         Text(
-            text = app.label,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.align(Alignment.Center)
+            text = formatDuration(usageMs),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
         )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(app.trackColor)
+                .clickable {
+                    if (running) return@clickable
+
+                    if (remainingMs == 0L) {
+                        remainingMs = app.frictionMs
+                        onLaunch()
+                    } else {
+                        running = true
+                    }
+                }
+        ) {
+            // CentreStart = la barre grandit depuis la gauche.
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(app.progressColor)
+            )
+
+            Text(
+                text = app.label,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }
 
