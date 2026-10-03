@@ -16,5 +16,6 @@ object WatchedApps {
     val all = listOf(
         WatchedApp(label = "Instagram", packageName = "com.instagram.android"),
         WatchedApp(label = "TikTok", packageName = "com.zhiliaoapp.musically"),
+        WatchedApp(label = "X", packageName = "com.twitter.android"),
     )
 }
