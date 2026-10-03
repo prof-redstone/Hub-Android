@@ -5,19 +5,18 @@ import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
 
 /**
- * Remonte jusqu'à l'Activity qui contient ce Context.
+ * Walks up to the Activity that holds this Context.
  *
- * Le type de retour est `ComponentActivity` et non `android.app.Activity` : c'est
- * `ComponentActivity` qui implémente `LifecycleOwner`, donc lui seul expose
- * `.lifecycle`. Retourner le type parent ferait échouer la compilation — le
- * compilateur Kotlin raisonne sur le type **déclaré**, pas sur l'objet réel.
+ * The return type is `ComponentActivity` and not `android.app.Activity`: it is
+ * `ComponentActivity` that implements `LifecycleOwner`, so only it exposes
+ * `.lifecycle`. Returning the parent type would break the build — the Kotlin
+ * compiler reasons on the **declared** type, not on the actual object.
  *
- * `LocalContext.current` est presque toujours un `ContextWrapper` (le contexte
- * d'Activity enveloppe le contexte d'application), d'où la remontée de la chaîne
- * `baseContext`.
+ * `LocalContext.current` is almost always a `ContextWrapper` (the Activity context
+ * wraps the application context), hence the walk up the `baseContext` chain.
  */
 internal tailrec fun Context.findActivity(): ComponentActivity = when (this) {
     is ComponentActivity -> this
     is ContextWrapper -> baseContext.findActivity()
-    else -> error("Context sans Activity : $this")
+    else -> error("Context with no Activity: $this")
 }

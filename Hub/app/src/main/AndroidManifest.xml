@@ -3,36 +3,37 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      Permission SPÉCIALE : ne s'accorde pas via requestPermissions().
-      L'utilisateur doit l'activer manuellement dans les réglages du système.
-      D'où tools:ignore, qui désactive le lint sur cette permission "protégée".
+      SPECIAL permission: cannot be granted through requestPermissions().
+      The user has to enable it manually in the system settings.
+      Hence tools:ignore, which silences the lint warning about this "protected"
+      permission.
     -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
     <!--
-      Rappels de temps d'écran.
+      Screen time reminders.
 
-      POST_NOTIFICATIONS : permission RUNTIME depuis l'API 33. Absente par défaut →
-      sans elle, notify() ne fait strictement rien. D'où la demande explicite dans
-      l'écran de réglages.
+      POST_NOTIFICATIONS: a RUNTIME permission since API 33. Absent by default, and
+      without it notify() does strictly nothing. Hence the explicit request in the
+      settings screen.
 
-      USE_EXACT_ALARM : permission normale, accordée à l'installation. C'est ce qui
-      autorise setExactAndAllowWhileIdle à réveiller le téléphone en veille.
-      ⚠️ Le Play Store la réserve aux applis d'alarme/agenda : acceptable ici, l'app
-      n'est pas publiée. Une version publique devrait passer par SCHEDULE_EXACT_ALARM,
-      que l'utilisateur doit activer à la main dans les réglages.
+      USE_EXACT_ALARM: a normal permission, granted at install time. It is what allows
+      setExactAndAllowWhileIdle to wake the device while it is dozing.
+      ⚠️ The Play Store reserves it for alarm and calendar apps. Acceptable here since
+      the app is not published. A public release should go through SCHEDULE_EXACT_ALARM,
+      which the user has to enable by hand in the settings.
 
-      RECEIVE_BOOT_COMPLETED : les alarmes ne survivent pas au redémarrage.
+      RECEIVE_BOOT_COMPLETED: alarms do not survive a reboot.
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!--
-      Android 11+ (API 30) : sans ce bloc, getLaunchIntentForPackage() renvoie null
-      même pour une app installée. Toute app qu'on compte lancer DOIT être déclarée ici.
-      Cette déclaration n'expose aucune donnée : elle dit juste "cette app m'intéresse".
+      Android 11+ (API 30): without this block, getLaunchIntentForPackage() returns
+      null even for an installed app. Every app we intend to launch MUST be declared
+      here. This declaration exposes no data: it only says "this app interests me".
     -->
     <queries>
         <package android:name="com.instagram.android" />
@@ -64,12 +65,12 @@
         </activity>
 
         <!--
-          exported="false" : aucune autre app ne doit déclencher ce receiver.
-          Les broadcasts système (BOOT_COMPLETED) atteignent malgré tout un receiver
-          non exporté — c'est le cas normal pour un récepteur déclaré ici.
+          exported="false": no other app should be able to trigger this receiver.
+          System broadcasts (BOOT_COMPLETED) still reach a non-exported receiver —
+          that is the normal case for one declared here.
 
-          Pas de <intent-filter> pour l'alarme : elle est adressée explicitement par
-          PendingIntent, donc jamais résolue par filtre.
+          No <intent-filter> for the alarm: it is addressed explicitly by
+          PendingIntent, so it is never resolved through a filter.
         -->
         <receiver
             android:name=".reminder.ReminderReceiver"

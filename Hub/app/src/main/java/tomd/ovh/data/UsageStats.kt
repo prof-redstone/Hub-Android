@@ -10,18 +10,18 @@ import android.provider.Settings
 import java.util.Calendar
 
 /**
- * Lecture du temps d'écran via [UsageStatsManager].
+ * Reads screen time through [UsageStatsManager].
  *
- * Nécessite la permission spéciale `PACKAGE_USAGE_STATS`, que l'utilisateur doit
- * activer manuellement dans les réglages du système.
+ * Requires the special `PACKAGE_USAGE_STATS` permission, which the user has to
+ * enable manually in the system settings.
  */
 object UsageStats {
 
     /**
-     * La permission a-t-elle été accordée ?
+     * Has the permission been granted?
      *
-     * `PACKAGE_USAGE_STATS` n'est pas une permission runtime : elle est gérée par
-     * AppOps, d'où le test direct plutôt qu'un `checkSelfPermission`.
+     * `PACKAGE_USAGE_STATS` is not a runtime permission: it is managed through
+     * AppOps, hence the direct test rather than a `checkSelfPermission`.
      */
     fun hasPermission(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -33,25 +33,25 @@ object UsageStats {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    /** Envoie l'utilisateur dans les réglages pour activer la permission. */
+    /** Sends the user to the settings to enable the permission. */
     fun requestPermission(context: Context) {
         context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
 
     /**
-     * Millisecondes passées au premier plan sur [packageName] depuis minuit.
+     * Milliseconds spent in the foreground on [packageName] since midnight.
      *
-     * ⚠️ L'algorithme ne fait PAS la somme de tous les gaps entre ACTIVITY_RESUMED.
-     * Android n'émet pas toujours ACTIVITY_PAUSED, et émet parfois plusieurs
-     * ACTIVITY_RESUMED d'affilée lors des transitions entre activities internes d'une
-     * même app. Une somme naïve compte donc des trous deux fois, ou perd du temps.
+     * ⚠️ The algorithm does NOT sum every gap between ACTIVITY_RESUMED events.
+     * Android does not always emit ACTIVITY_PAUSED, and sometimes emits several
+     * ACTIVITY_RESUMED in a row when transitioning between activities inside the
+     * same app. A naive sum therefore counts some gaps twice, or loses time.
      *
-     * On tient donc un intervalle ouvert ([resumedAt]) :
-     * - RESUMED alors qu'aucun intervalle n'est ouvert  → on ouvre
-     * - RESUMED alors qu'un intervalle est déjà ouvert  → on ignore
-     * - PAUSED ou STOPPED                            → on ferme et on cumule
-     * Un intervalle resté ouvert en fin de flux est cloturé sur `now` (app au premier
-     * plan, ou PAUSED jamais émis).
+     * We instead keep an open interval ([resumedAt]):
+     * - RESUMED while no interval is open  -> open one
+     * - RESUMED while an interval is open -> ignore it
+     * - PAUSED or STOPPED                -> close it and accumulate
+     * An interval still open at the end of the stream is closed on `now` (app in the
+     * foreground, or PAUSED never emitted).
      */
     fun todayForegroundMs(context: Context, packageName: String): Long {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -61,8 +61,8 @@ object UsageStats {
         var totalMs = 0L
         var resumedAt: Long? = null
 
-        // hasNextEvent() / getNextEvent(event) : l'API est stateful, on avance
-        // dans le flux en réemplissant le même objet Event à chaque itération.
+        // hasNextEvent() / getNextEvent(event): the API is stateful, we walk the
+        // stream by refilling the same Event object on each iteration.
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
@@ -89,14 +89,14 @@ object UsageStats {
 }
 
 /**
- * Timestamp du début de la journée locale (minuit), en millisecondes.
+ * Timestamp of the start of the local day (midnight), in milliseconds.
  *
- * `Calendar` et non `java.time.LocalDate` : `java.time` n'existe qu'à partir de
- * l'API 26 et le `minSdk` du projet est 24.
+ * `Calendar` rather than `java.time.LocalDate`: `java.time` only exists from
+ * API 26 and the project's `minSdk` is 24.
  *
- * La valeur sert d'identifiant de journée : deux appels dans la même journée rendent
- * le même timestamp. C'est ainsi qu'on détecte le passage à minuit, sans avoir à
- * formater une date ni à la comparer comme une chaîne.
+ * The value serves as a day identifier: two calls within the same day return the
+ * same timestamp. That is how we detect the switch to midnight, without having to
+ * format a date or compare it as a string.
  */
 fun startOfTodayMs(): Long =
     Calendar.getInstance().apply {
@@ -106,15 +106,15 @@ fun startOfTodayMs(): Long =
         set(Calendar.MILLISECOND, 0)
     }.timeInMillis
 
-/** "1h 12" ou "47min", pour l'affichage au-dessus des boutons. */
+/** "1h 12" or "47min", for the display above the buttons. */
 fun formatDuration(ms: Long): String {
-    // Arrondi au plus proche, comme le fait le « Temps d'écran » d'Android.
+    // Rounded to the nearest, the way Android's own "Screen time" does it.
     //
-    // Tronquer poserait deux problèmes concrets :
-    //  - un compteur reste sur "0min" pendant la première minute d'usage, ce qui donne
-    //    l'impression que la mesure ne marche pas
-    //  - au moment de déclencher un rappel sur un seuil de 10 min, l'affichage serait
-    //    en retard d'une notif sur le temps réellement passé
+    // Truncating would cause two concrete problems:
+    //  - a counter stays on "0min" during the first minute of usage, which makes
+    //    it look like the measurement is broken
+    //  - when firing a reminder on a 10 min threshold, the display would be one
+    //    notification behind the time actually spent
     val totalMinutes = (ms + 30_000L) / 60_000L
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60

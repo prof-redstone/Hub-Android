@@ -6,12 +6,12 @@ import android.widget.Toast
 import tomd.ovh.R
 
 /**
- * Lance une app par son package name.
+ * Launches an app by its package name.
  *
- * Renvoie `false` si l'app n'est pas installée, pour que l'appelant puisse prévenir l'utilisateur.
+ * Returns `false` if the app is not installed, so the caller can warn the user.
  *
- * ⚠️ Depuis Android 11 (API 30), cette fonction renvoie `null` même pour une app installée
- * tant que celle-ci n'est pas déclarée dans `<queries>` du AndroidManifest.xml.
+ * ⚠️ Since Android 11 (API 30), this function returns `null` even for an installed
+ * app as long as that app is not declared in `<queries>` of the AndroidManifest.xml.
  */
 fun Context.launchApp(app: WatchedApp): Boolean {
     val intent = packageManager.getLaunchIntentForPackage(app.packageName)
@@ -21,7 +21,7 @@ fun Context.launchApp(app: WatchedApp): Boolean {
     return true
 }
 
-/** Variante qui affiche un toast d'erreur si l'app est absente. */
+/** Variant that shows an error toast if the app is missing. */
 fun Context.launchAppOrWarn(app: WatchedApp) {
     if (!launchApp(app)) {
         Toast.makeText(

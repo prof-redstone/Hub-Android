@@ -3,13 +3,13 @@ package tomd.ovh.data
 import androidx.compose.ui.graphics.Color
 
 /**
- * Représente une app qu'on peut lancer depuis le hub.
+ * Represents an app that can be launched from the hub.
  *
- * @param label          le nom affiché par défaut, si l'app n'est pas installée
- * @param packageName    l'identifiant unique de l'app, stable et unique sur le Play Store
- * @param frictionMs     durée du délai de friction avant que l'app soit lançable
- * @param trackColor     couleur de la barre non remplie
- * @param progressColor  couleur de la barre remplie
+ * @param label          the default displayed name, used if the app is not installed
+ * @param packageName    the app's unique identifier, stable and unique on the Play Store
+ * @param frictionMs     duration of the friction delay before the app becomes launchable
+ * @param trackColor     colour of the unfilled bar
+ * @param progressColor  colour of the filled bar
  */
 data class WatchedApp(
     val label: String,
@@ -19,7 +19,7 @@ data class WatchedApp(
     val progressColor: Color = Color.White,
 )
 
-/** La liste des apps cibles. Pour l'instant en dur, un écran de réglages viendra en v1. */
+/** The list of target apps. Hardcoded for now, a settings screen will come in v1. */
 object WatchedApps {
     val all = listOf(
         WatchedApp(
@@ -28,8 +28,8 @@ object WatchedApps {
             trackColor = Color(0xFF202020),
             progressColor = Color(0xFF303030),
         ),
-        // Feurstagram : l'APK Instagram officiel patché (github.com/jean-voila/FeurStagram).
-        // Variante « clone », installée à côté de l'officiel → package distinct.
+        // Feurstagram: the official Instagram APK, patched (github.com/jean-voila/FeurStagram).
+        // A "clone" variant, installed alongside the official one → distinct package.
         WatchedApp(
             label = "Feurstagram",
             packageName = "com.instagram.android.feurstagram",

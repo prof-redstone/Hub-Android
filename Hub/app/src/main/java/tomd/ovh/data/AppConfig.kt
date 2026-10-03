@@ -8,36 +8,36 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * L'intervalle de rappel sert **deux fois** : c'est la période entre deux
- * vérifications, et le seuil de temps à franchir pour déclencher un rappel.
+ * The reminder interval does double duty: it is both the period between two checks
+ * and the amount of screen time to cross before a reminder fires.
  *
- * Un seul réglage, donc pas d'incohérence possible entre « je vérifie toutes les
- * 5 min » et « je préviens au bout de 10 min ». La conséquence assumée : à 10 min,
- * un rappel arrive en réalité toutes les 10 à 20 min d'usage cumulé.
+ * A single setting, so there is no way to end up with "I check every 5 min" and
+ * "I warn after 10 min" disagreeing. The accepted consequence: at 10 min, a
+ * reminder actually lands every 10 to 20 min of accumulated usage.
  *
- * ⚠️ Déclaré en top-level, pas dans le `companion object` de [AppConfig] : un membre
- * de companion s'importe via `AppConfig.Companion.nom`, ce qui est verbeux. En
- * top-level, `import tomd.ovh.data.REMINDER_INTERVAL_CHOICES_MS` suffit — même
- * approche que `startOfTodayMs` et `formatDuration` dans `UsageStats.kt`.
+ * ⚠️ Declared top-level rather than inside AppConfig's `companion object`: a
+ * companion member has to be imported as `AppConfig.Companion.NAME`, which is
+ * verbose. Top-level, `import tomd.ovh.data.REMINDER_INTERVAL_CHOICES_MS` is
+ * enough — same approach as `startOfTodayMs` and `formatDuration` in UsageStats.kt.
  */
 const val DEFAULT_REMINDER_INTERVAL_MS = 10L * 60_000L
 
-/** Les intervalles proposés dans les réglages, en millisecondes. */
+/** The intervals offered in the settings, in milliseconds. */
 val REMINDER_INTERVAL_CHOICES_MS = listOf(5L, 10L, 15L, 30L).map { it * 60_000L }
 
 /**
- * Personnalisation utilisateur : quelles apps afficher, et sous quel libellé.
+ * User customisation: which apps to show, and under what label.
  *
- * Volontairement séparée de [WatchedApp]. `WatchedApp` est la définition *statique*
- * d'une app (package, friction, couleurs), figée dans le code. `AppConfig` est la
- * couche d'*override* au-dessus, écrite par l'utilisateur et persistée sur disque.
+ * Deliberately kept separate from [WatchedApp]. `WatchedApp` is the *static*
+ * definition of an app (package, friction, colours), frozen in the code. `AppConfig`
+ * is the *override* layer on top of it, written by the user and persisted on disk.
  *
- * Analogie C++ : la table de compilation reste constante, la config utilisateur est
- * un fichier d'override chargé par-dessus au démarrage et rechargé à chaud.
+ * C++ analogy: the compile-time table stays constant, the user config is an override
+ * file loaded on top at startup and re-read as it changes.
  *
- * ⚠️ Les getters (`isVisible`, `labelOf`) lisent un `mutableStateOf`. Il faut donc
- * les appeler **pendant** une composition, jamais dans un `LaunchedEffect` : c'est
- * la lecture de cet état qui déclenche la recomposition quand on écrit.
+ * ⚠️ The getters (`isVisible`, `labelOf`) read a `mutableStateOf`, so they must be
+ * called *during* a composition, never inside a `LaunchedEffect`: it is that read
+ * which triggers recomposition when something is written.
  */
 @Stable
 class AppConfig private constructor(private val prefs: SharedPreferences) {
@@ -50,10 +50,10 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
         private const val KEY_REMINDER_INTERVAL = "reminder_interval_ms"
 
         /**
-         * Construit une instance depuis un [Context].
+         * Builds an instance from a [Context].
          *
-         * On prend `applicationContext` et non l'Activity : une Activity a une durée
-         * de vie courte, et la config doit survivre à sa destruction.
+         * We take `applicationContext` and not the Activity: an Activity has a short
+         * lifetime, and the config has to outlive it.
          */
         fun from(context: Context): AppConfig = AppConfig(
             context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -61,38 +61,38 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
     }
 
     /**
-     * L'état Compose qui pilote toute l'UI.
+     * The Compose state that drives the whole UI.
      *
-     * Une `Map` immuable remplacée à chaque écriture : les lambdas de lecture
-     * capturent l'ancienne map, donc le snapshot est sûr. On ne mute jamais en place.
+     * An immutable `Map`, replaced on every write: read lambdas capture the old map,
+     * so the snapshot is safe. It is never mutated in place.
      */
     private var entries by mutableStateOf(readAllFromPrefs())
         private set
 
     /**
-     * Les préférences de rappel, dans l'état Compose — **pour la même raison que
+     * The reminder preferences, held in Compose state — **for the same reason as
      * `entries`**.
      *
-     * `SharedPreferences` n'est pas un `MutableState` : écrire dedans ne déclenche
-     * aucune recomposition. Sans cet état miroir, l'interrupteur et les chips
-     * afficheraient l'ancienne valeur et il faudrait quitter l'écran pour voir la
-     * prise en compte.
+     * `SharedPreferences` is not a `MutableState`: writing to it triggers no
+     * recomposition. Without this mirrored state, the switch and the chips would
+     * keep showing the old value and you would have to leave the screen to see
+     * the change take effect.
      *
-     * On ne pourrait pas non plus se contenter de `notify()` : un `SharedPreferences`
-     * n'a pas de flux d'observation. D'où l'image maintenue dans le snapshot.
+     * Subscribing to `SharedPreferences` is not an option either: it exposes no
+     * observation flow. Hence the mirrored copy inside the snapshot.
      */
     private var reminder by mutableStateOf(readReminderFromPrefs())
         private set
 
-    /** Le bouton de cette app doit-il apparaître sur l'écran Hub ? Défaut : oui. */
+    /** Should this app's button appear on the Hub screen? Default: yes. */
     fun isVisible(packageName: String): Boolean =
         entries[packageName]?.visible ?: true
 
-    /** Libellé personnalisé s'il est non vide, sinon celui de la définition. */
+    /** The custom label if it is non-blank, otherwise the one from the definition. */
     fun labelOf(app: WatchedApp): String =
         entries[app.packageName]?.label?.takeIf { it.isNotBlank() } ?: app.label
 
-    /** Libellé brut tel que saisi. Vide = pas d'override. Utilisé par le champ texte. */
+    /** The label exactly as typed. Blank = no override. Used by the text field. */
     fun customLabelOf(app: WatchedApp): String =
         entries[app.packageName]?.label.orEmpty()
 
@@ -100,21 +100,21 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
         update(packageName) { it.copy(visible = visible) }
 
     /**
-     * ⚠️ On stocke la saisie **brute**, sans `trim()`.
+     * ⚠️ The input is stored **verbatim**, without `trim()`.
      *
-     * Le champ texte est contrôlé : sa valeur relit `customLabelOf`. Si on
-     * normalisait ici, taper une espace en fin de mot retrancherait le caractère
-     * sous le curseur à chaque frappe.
+     * The text field is controlled: its value re-reads `customLabelOf`. If we
+     * normalised here, typing a trailing space would delete the character under
+     * the cursor on every keystroke.
      */
     fun setLabel(packageName: String, label: String) =
         update(packageName) { it.copy(label = label) }
 
     /**
-     * Les rappels de temps d'écran sont-ils activés ?
+     * Are screen time reminders enabled?
      *
-     * L'interrupteur est piloté depuis les réglages, mais c'est aussi une porte
-     * d'entrée pour le [tomd.ovh.reminder.ReminderReceiver] : le receiver ne fait
-     * rien du tout tant que c'est `false`.
+     * The switch is driven from the settings screen, but this is also the gate for
+     * [tomd.ovh.reminder.ReminderReceiver]: the receiver does nothing at all while
+     * this is `false`.
      */
     fun isReminderEnabled(): Boolean = reminder.enabled
 
@@ -144,7 +144,7 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
         entries = entries + (packageName to updated)
     }
 
-    /** Lecture au démarrage : seules les apps connues sont chargées. */
+    /** Startup read: only the known apps are loaded. */
     private fun readAllFromPrefs(): Map<String, Entry> =
         WatchedApps.all.associate { app ->
             app.packageName to Entry(
@@ -159,10 +159,10 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
     )
 
     /**
-     * Préférences de rappel.
+     * Reminder preferences.
      *
-     * `data class` pour que `mutableStateOf` compare par égalité structurelle :
-     * réécrire la même valeur ne déclenche alors aucune recomposition inutile.
+     * A `data class` so that `mutableStateOf` compares by structural equality:
+     * writing an identical value then triggers no wasted recomposition.
      */
     private data class ReminderSettings(
         val enabled: Boolean = false,

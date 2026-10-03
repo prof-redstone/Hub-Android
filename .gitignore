@@ -1,13 +1,13 @@
-# --- Documentation de développement (privée) ---
-# Notes de travail, pitch, décisions d'architecture. Ne doit jamais être publié.
+# --- Private development documentation ---
+# Working notes, pitch, architecture decisions. Must never be published.
 NOTES.md
 docs/
 spec/
 
 # --- Android Studio ---
-# Config de l'IDE, propre à chaque machine.
-# On garde exceptions/vcs.xml et deploymentTargetSelector.xml qui sont anodins,
-# mais le reste (workspace.xml) contient les onglets ouverts et l'historique de session.
+# IDE config, machine-specific.
+# We keep exceptions/vcs.xml and deploymentTargetSelector.xml because they are
+# harmless, but the rest (workspace.xml) holds the open tabs and session history.
 Hub/.idea/
 
 # --- Build ---
@@ -16,10 +16,10 @@ build/
 .kotlin/
 
 # --- Local ---
-# Contient sdk.dir, le chemin du SDK de la machine
+# Holds sdk.dir, the path to the machine's SDK
 local.properties
 
-# --- Divers ---
+# --- Misc ---
 *.iml
 .DS_Store
 captures/

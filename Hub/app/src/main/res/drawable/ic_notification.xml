@@ -5,9 +5,9 @@
     android:viewportHeight="24">
 
     <!--
-      Silhouette d'horloge. Les icônes de notification sont masquées par le système
-      qui n'en garde que la forme, en blanc. D'où un tracé plein unique, sans dégradé
-      ni couleur : le tinting est appliqué par Android, pas par nous.
+      Clock silhouette. Notification icons are masked by the system, which keeps
+      only the shape and renders it white. Hence a single filled path, no gradient
+      and no colour of our own: the tinting is applied by Android, not by us.
     -->
     <path
         android:fillColor="#FFFFFFFF"

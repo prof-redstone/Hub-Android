@@ -49,11 +49,11 @@ import tomd.ovh.reminder.Reminder
 import tomd.ovh.reminder.ReminderScheduler
 
 /**
- * Page de personnalisation.
+ * Customisation screen.
  *
- * Deux sections : les rappels de temps d'écran, puis les apps elles-mêmes. L'écran ne
- * lit que [AppConfig] et n'écrit nulle part ailleurs — chaque modification est
- * persistée immédiatement, donc l'écran Hub est à jour au retour.
+ * Two sections: the screen time reminders, then the apps themselves. The screen
+ * only reads [AppConfig] and writes nowhere else — every change is persisted
+ * immediately, so the Hub screen is up to date on the way back.
  */
 @Composable
 fun SettingsScreen(
@@ -62,16 +62,16 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    // Même raison que pour les prefs : `canNotify` et `canReadUsage` sont des
-    // lectures brutes de l'API système, sans état derrière. Sans ces `mutableStateOf`,
-    // les bandeaux d'avertissement resteraient affichés après avoir accordé la
-    // permission, et l'utilisateur conclurait que le bouton n'a rien fait.
+    // Same reason as for the prefs: `canNotify` and `canReadUsage` are raw reads of
+    // a system API, with no state behind them. Without these `mutableStateOf`, the
+    // warning banners would stay on screen after the permission was granted, and
+    // the user would conclude the button did nothing.
     var canNotify by remember { mutableStateOf(Reminder.canNotify(context)) }
     var canReadUsage by remember { mutableStateOf(UsageStats.hasPermission(context)) }
 
-    // La permission d'usage s'accorde dans les réglages Android : aucun callback de
-    // retour. ON_RESUME est le seul signal fiable — il se déclenche quand
-    // l'utilisateur revient des réglages système.
+    // The usage access permission is granted in the Android settings: there is no
+    // return callback. ON_RESUME is the only reliable signal — it fires when the
+    // user comes back from the system settings.
     val lifecycleOwner = remember(context) { context.findActivity() }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -84,8 +84,8 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Demandée au moment où l'utilisateur active les rappels, jamais à froid au
-    // lancement : une permission demandée sans contexte est refusée d'office.
+    // Requested at the moment the user enables reminders, never cold at launch: a
+    // permission asked for without context is denied outright.
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> canNotify = granted }
@@ -97,8 +97,9 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            // weight(1f) = occupe la place restante et devient scrollable.
-            // Sans lui, la liste se borne à sa hauteur de contenu et déborde du bas.
+            // weight(1f) = takes the remaining space and becomes scrollable.
+            // Without it, the list is limited to its content height and overflows
+            // the bottom.
             modifier = Modifier.weight(1f)
         ) {
             item {
@@ -126,8 +127,8 @@ fun SettingsScreen(
                 )
             }
 
-            // key = packageName : sans ça, LazyColumn recycle les lignes par position et
-            // le champ texte afficherait le libellé de l'app voisine pendant le défilement.
+            // key = packageName: without it, LazyColumn recycles rows by position and
+            // the text field would show the neighbouring app's label while scrolling.
             items(WatchedApps.all, key = { it.packageName }) { app ->
                 AppSettingRow(app = app, config = config)
             }
@@ -164,9 +165,10 @@ private fun ReminderSection(
                 onCheckedChange = { isOn ->
                     config.setReminderEnabled(isOn)
 
-                    // Activer : on programme le premier passage dans un intervalle.
-                    // Désactiver : on annule, et on retire les rappels déjà posés —
-                    // sinon la notif d'un quota déjà franchi resterait dans le volet.
+                    // Enabling: we schedule the first pass one interval from now.
+                    // Disabling: we cancel, and we clear the reminders already posted —
+                    // otherwise the notification for an already crossed threshold
+                    // would stay in the shade.
                     if (isOn) {
                         ReminderScheduler.scheduleNext(context, config.reminderIntervalMs())
                     } else {
@@ -193,8 +195,8 @@ private fun ReminderSection(
                         selected = config.reminderIntervalMs() == choice,
                         onClick = {
                             config.setReminderIntervalMs(choice)
-                            // On reprogramme tout de suite : l'alarme en cours est déjà
-                            // à l'ancien intervalle, on ne peut pas la rejouer.
+                            // We reschedule straight away: the pending alarm is
+                            // already on the old interval and cannot be replayed.
                             ReminderScheduler.scheduleNext(context, choice)
                         },
                         label = { Text("${choice / 60_000L} min") }
@@ -258,8 +260,8 @@ private fun AppSettingRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // Le nom d'origine reste visible même si l'utilisateur le renomme,
-                // sinon on ne sait plus quelle app est laquelle.
+                // The original name stays visible even if the user renames the app,
+                // otherwise there is no telling which one is which.
                 Text(
                     text = app.label,
                     style = MaterialTheme.typography.titleMedium
@@ -281,8 +283,8 @@ private fun AppSettingRow(
             value = customLabel,
             onValueChange = { config.setLabel(app.packageName, it) },
             label = { Text(stringResource(R.string.settings_custom_label)) },
-            // Le libellé d'origine en exemple : un champ vide n'est pas un champ vide,
-            // c'est « pas d'override ».
+            // The original label as a hint: an empty field is not an empty field,
+            // it means "no override".
             placeholder = { Text(app.label) },
             singleLine = true,
             trailingIcon = {

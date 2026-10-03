@@ -74,17 +74,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Les deux destinations du graphe. Un objet, pas des string-crues dispersées. */
+/** The two destinations of the graph. An object, not raw strings scattered around. */
 private object Route {
     const val HUB = "hub"
     const val SETTINGS = "settings"
 }
 
 /**
- * Coquille de l'app : une seule `Scaffold`, une seule barre du haut, un `NavHost`.
+ * The app shell: a single `Scaffold`, a single top bar, one `NavHost`.
  *
- * La barre du haut est pilotée par la destination courante, donc les deux écrans
- * partagent le même `TopAppBar` au lieu d'en empiler deux.
+ * The top bar is driven by the current destination, so both screens share the same
+ * `TopAppBar` instead of stacking two of them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,12 +92,12 @@ fun HubApp() {
     val context = LocalContext.current
     val navController = rememberNavController()
 
-    // Une seule instance pour toute la session : les deux écrans lisent le même état,
-    // donc un changement dans les réglages est déjà visible sur le Hub au retour.
+    // A single instance for the whole session: both screens read the same state, so a
+    // change made in the settings is already visible back on the Hub screen.
     val config = remember { AppConfig.from(context) }
 
-    // currentBackStackEntryAsState() est un State : la barre se recompose à chaque
-    // navigation. Sans ce `by`, le titre resterait figé sur « Hub ».
+    // currentBackStackEntryAsState() is a State: the bar recomposes on every
+    // navigation. Without this `by`, the title would stay frozen on "Hub".
     val backStackEntry by navController.currentBackStackEntryAsState()
     val onSettings = backStackEntry?.destination?.route == Route.SETTINGS
 
@@ -157,8 +157,8 @@ fun HubScreen(
 ) {
     val context = LocalContext.current
 
-    // Incrémenté à chaque retour au premier plan. Utilisé comme clé de `remember`
-    // dans AppButton, ça remet tous les timers à zéro d'un coup.
+    // Incremented on every return to the foreground. Used as a `remember` key inside
+    // AppButton, this resets every timer at once.
     var resetKey by remember { mutableIntStateOf(0) }
 
     var hasPermission by remember { mutableStateOf(UsageStats.hasPermission(context)) }
@@ -169,13 +169,19 @@ fun HubScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 resetKey++
-                // L'utilisateur a pu accorder la permission dans les réglages entre-temps.
+                // The user may have granted the permission from the settings in between.
                 hasPermission = UsageStats.hasPermission(context)
 
-                // Filet de sécurité des alarmes : le receiver se reprogramme lui-même,
-                // mais Android perd les alarmes au redémarrage, et l'utilisateur peut
-                // vider le stockage de l'app. Ouvrir Hub répare les deux cas.
-                if (config.isReminderEnabled()) {
+                // Safety net for the alarms: the receiver reschedules itself, but
+                // Android drops alarms on reboot, on a force-stop, and when the user
+                // clears the app's storage. Opening Hub repairs those cases.
+                //
+                // ⚠️ hasPending() guard, and this matters: a blind reschedule would
+                // push the next check back by a full interval every single time the
+                // app is opened. Since that check is the only way usage gets noticed,
+                // opening Hub repeatedly would silently delay every reminder. This
+                // re-arms only when there is genuinely nothing pending.
+                if (config.isReminderEnabled() && !ReminderScheduler.hasPending(context)) {
                     ReminderScheduler.scheduleNext(context, config.reminderIntervalMs())
                 }
             }
@@ -184,7 +190,7 @@ fun HubScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // queryEvents() est une lecture disque : on le sort du corps de la fonction.
+    // queryEvents() is a disk read: we keep it out of the function body.
     LaunchedEffect(resetKey, hasPermission) {
         if (!hasPermission) return@LaunchedEffect
         usageMs = WatchedApps.all.associate { app ->
@@ -192,8 +198,8 @@ fun HubScreen(
         }
     }
 
-    // `config` est lu ici, dans le corps de la composition : c'est ce qui fait
-    // recomposer la liste quand une app est cochée ou décochée dans les réglages.
+    // `config` is read here, in the body of the composition: that is what makes the
+    // list recompose when an app is ticked or unticked in the settings.
     val visibleApps = WatchedApps.all.filter { config.isVisible(it.packageName) }
 
     Column(
@@ -243,12 +249,12 @@ private fun PermissionBanner(onClick: () -> Unit) {
 }
 
 /**
- * Bouton à friction : un premier clic lance un compte à rebours, le second clic
- * (une fois la barre pleine) ouvre l'app.
+ * Friction button: the first tap starts a countdown, the second tap (once the bar
+ * is full) opens the app.
  *
- * @param label       libellé affiché, déjà résolu par [AppConfig.labelOf].
- * @param remainingMs millisecondes restantes. 0 = prêt à lancer.
- * @param running     true pendant le compte à rebours.
+ * @param label       the displayed label, already resolved by [AppConfig.labelOf].
+ * @param remainingMs milliseconds left. 0 = ready to launch.
+ * @param running     true while the countdown runs.
  */
 @Composable
 fun AppButton(
@@ -262,8 +268,8 @@ fun AppButton(
     var remainingMs by remember(app.packageName, resetKey) { mutableLongStateOf(app.frictionMs) }
     var running by remember(app.packageName, resetKey) { mutableStateOf(false) }
 
-    // Relancé à chaque changement de `running`. La coroutine est annulée
-    // automatiquement si le bouton quitte l'écran.
+    // Relaunched on every change of `running`. The coroutine is cancelled
+    // automatically if the button leaves the screen.
     LaunchedEffect(running, app.packageName) {
         if (running) {
             val end = SystemClock.elapsedRealtime() + app.frictionMs
@@ -307,7 +313,7 @@ fun AppButton(
                     }
                 }
         ) {
-            // CentreStart = la barre grandit depuis la gauche.
+            // CenterStart = the bar grows from the left.
             Box(
                 Modifier
                     .align(Alignment.CenterStart)

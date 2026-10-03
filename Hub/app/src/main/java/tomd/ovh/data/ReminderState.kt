@@ -4,12 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Carnet de bord du rappel : ce qu'on a déjà signalé à l'utilisateur, et quand.
+ * The reminder log book: what we have already told the user, and when.
  *
- * Volontairement séparé de [AppConfig]. `AppConfig` contient des **préférences**,
- * choisies par l'utilisateur et lues par l'UI. `ReminderState` contient de l'**état
- * d'exécution**, écrit par le [tomd.ovh.reminder.ReminderReceiver] et jamais lu par
- * l'UI. Mélanger les deux obligerait l'écran de réglages à écrire dans le carnet.
+ * Deliberately kept separate from [AppConfig]. `AppConfig` holds **preferences**,
+ * chosen by the user and read by the UI. `ReminderState` holds **runtime state**,
+ * written by [tomd.ovh.reminder.ReminderReceiver] and never read by the UI.
+ * Mixing the two would force the settings screen to write into the log book.
  */
 class ReminderState private constructor(private val prefs: SharedPreferences) {
 
@@ -18,7 +18,7 @@ class ReminderState private constructor(private val prefs: SharedPreferences) {
         private const val KEY_DAY = "day"
         private const val KEY_BASELINE = "baseline_"
 
-        /** Marqueur « jamais signalé » pour cette app. */
+        /** The "never notified" marker for this app. */
         const val NO_BASELINE = -1L
 
         fun from(context: Context): ReminderState = ReminderState(
@@ -26,7 +26,7 @@ class ReminderState private constructor(private val prefs: SharedPreferences) {
         )
     }
 
-    /** Timestamp du dernier passage à minuit. Voir [startOfTodayMs]. */
+    /** Timestamp of the last switch to midnight. See [startOfTodayMs]. */
     fun lastResetDay(): Long = prefs.getLong(KEY_DAY, NO_BASELINE)
 
     fun markResetFor(day: Long) {
@@ -34,10 +34,11 @@ class ReminderState private constructor(private val prefs: SharedPreferences) {
     }
 
     /**
-     * Cumul du jour au moment du dernier rappel de cette app.
+     * Today's accumulated time at the moment this app was last reminded about.
      *
-     * On ne compare pas le cumul à un seuil absolu mais à cette référence : c'est ce
-     * qui produit un intervalle régulier même si on masque l'app une demi-journée.
+     * We do not compare the accumulated time to an absolute threshold but to this
+     * reference: that is what yields a regular interval even if you hide the app
+     * for half a day.
      */
     fun baseline(packageName: String): Long =
         prefs.getLong(KEY_BASELINE + packageName, NO_BASELINE)
@@ -47,13 +48,13 @@ class ReminderState private constructor(private val prefs: SharedPreferences) {
     }
 
     /**
-     * Repart de zéro pour toutes les apps connues.
+     * Starts over from zero for every known app.
      *
-     * ⚠️ `SharedPreferences` n'offre pas d'énumérer ses clés. On parcourt donc
-     * `WatchedApps.all` plutôt que de faire `prefs.all.keys`. Conséquence : le
-     * repère d'une app retirée de la liste reste sur le disque. Sans conséquence
-     * ici — le receiver ne le lit plus jamais — mais à savoir si on rend la liste
-     * des apps dynamique.
+     * ⚠️ `SharedPreferences` offers no way to enumerate its keys. We therefore walk
+     * `WatchedApps.all` instead of using `prefs.all.keys`. Consequence: the
+     * reference of an app removed from the list stays on disk. Harmless here — the
+     * receiver never reads it again — but worth knowing if the app list ever
+     * becomes dynamic.
      */
     fun clearBaselines() {
         val editor = prefs.edit()
