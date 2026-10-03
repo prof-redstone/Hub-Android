@@ -56,14 +56,7 @@ object UsageStats {
     fun todayForegroundMs(context: Context, packageName: String): Long {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        val begin = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
-        val events = usm.queryEvents(begin, System.currentTimeMillis())
+        val events = usm.queryEvents(startOfTodayMs(), System.currentTimeMillis())
 
         var totalMs = 0L
         var resumedAt: Long? = null
@@ -95,9 +88,34 @@ object UsageStats {
     }
 }
 
+/**
+ * Timestamp du début de la journée locale (minuit), en millisecondes.
+ *
+ * `Calendar` et non `java.time.LocalDate` : `java.time` n'existe qu'à partir de
+ * l'API 26 et le `minSdk` du projet est 24.
+ *
+ * La valeur sert d'identifiant de journée : deux appels dans la même journée rendent
+ * le même timestamp. C'est ainsi qu'on détecte le passage à minuit, sans avoir à
+ * formater une date ni à la comparer comme une chaîne.
+ */
+fun startOfTodayMs(): Long =
+    Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
 /** "1h 12" ou "47min", pour l'affichage au-dessus des boutons. */
 fun formatDuration(ms: Long): String {
-    val totalMinutes = ms / 60_000
+    // Arrondi au plus proche, comme le fait le « Temps d'écran » d'Android.
+    //
+    // Tronquer poserait deux problèmes concrets :
+    //  - un compteur reste sur "0min" pendant la première minute d'usage, ce qui donne
+    //    l'impression que la mesure ne marche pas
+    //  - au moment de déclencher un rappel sur un seuil de 10 min, l'affichage serait
+    //    en retard d'une notif sur le temps réellement passé
+    val totalMinutes = (ms + 30_000L) / 60_000L
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
 

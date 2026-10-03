@@ -13,12 +13,24 @@
     <string name="permission_usage_stats">Autoriser la lecture du temps d\'écran</string>
     <string name="hub_empty">Aucune app affichée. Ajoute-en depuis les réglages.</string>
 
-    <!-- Écran Réglages -->
+    <!-- Écran Réglages : apps -->
     <string name="settings_intro">Coche les apps à garder sur l\'écran principal, et renomme-les si tu veux.</string>
     <string name="settings_custom_label">Libellé du bouton</string>
     <string name="settings_reset_label">Rétablir le libellé d\'origine</string>
-    <string name="settings_show_all">Tout afficher</string>
-    <string name="settings_hide_all">Tout masquer</string>
+
+    <!-- Écran Réglages : rappels -->
+    <string name="settings_reminder_title">Rappel de temps d\'écran</string>
+    <string name="settings_reminder_subtitle">Une notification quand tu dépasses ton quota sur une app. Balayable, sans notification permanente.</string>
+    <string name="settings_reminder_interval">Fréquence</string>
+    <string name="settings_reminder_permission_needed">Autorise les notifications pour Hub, sinon aucun rappel ne peut s\'afficher.</string>
+    <string name="settings_reminder_grant">Autoriser les notifications</string>
+    <string name="settings_reminder_usage_needed">Autorise aussi la lecture du temps d\'écran dans les réglages Android.</string>
+
+    <!-- Rappels -->
+    <string name="reminder_channel_name">Rappels de temps d\'écran</string>
+    <string name="reminder_channel_description">Notification de pause, envoyée quand tu dépasses ton quota sur une app surveillée.</string>
+    <string name="reminder_title">%1$s · %2$s aujourd\'hui</string>
+    <string name="reminder_text">Pause de quelques minutes ?</string>
 
     <!-- Messages -->
     <string name="not_installed">%1$s n\'est pas installée (ou le package est incorrect)</string>

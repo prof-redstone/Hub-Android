@@ -11,6 +11,25 @@
         tools:ignore="ProtectedPermissions" />
 
     <!--
+      Rappels de temps d'écran.
+
+      POST_NOTIFICATIONS : permission RUNTIME depuis l'API 33. Absente par défaut →
+      sans elle, notify() ne fait strictement rien. D'où la demande explicite dans
+      l'écran de réglages.
+
+      USE_EXACT_ALARM : permission normale, accordée à l'installation. C'est ce qui
+      autorise setExactAndAllowWhileIdle à réveiller le téléphone en veille.
+      ⚠️ Le Play Store la réserve aux applis d'alarme/agenda : acceptable ici, l'app
+      n'est pas publiée. Une version publique devrait passer par SCHEDULE_EXACT_ALARM,
+      que l'utilisateur doit activer à la main dans les réglages.
+
+      RECEIVE_BOOT_COMPLETED : les alarmes ne survivent pas au redémarrage.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!--
       Android 11+ (API 30) : sans ce bloc, getLaunchIntentForPackage() renvoie null
       même pour une app installée. Toute app qu'on compte lancer DOIT être déclarée ici.
       Cette déclaration n'expose aucune donnée : elle dit juste "cette app m'intéresse".
@@ -43,6 +62,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          exported="false" : aucune autre app ne doit déclencher ce receiver.
+          Les broadcasts système (BOOT_COMPLETED) atteignent malgré tout un receiver
+          non exporté — c'est le cas normal pour un récepteur déclaré ici.
+
+          Pas de <intent-filter> pour l'alarme : elle est adressée explicitement par
+          PendingIntent, donc jamais résolue par filtre.
+        -->
+        <receiver
+            android:name=".reminder.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

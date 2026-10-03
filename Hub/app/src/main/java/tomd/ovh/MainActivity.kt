@@ -1,7 +1,5 @@
 package tomd.ovh
 
-import android.content.Context
-import android.content.ContextWrapper
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
@@ -59,7 +57,9 @@ import tomd.ovh.data.WatchedApps
 import tomd.ovh.data.UsageStats
 import tomd.ovh.data.formatDuration
 import tomd.ovh.data.launchAppOrWarn
+import tomd.ovh.reminder.ReminderScheduler
 import tomd.ovh.ui.SettingsScreen
+import tomd.ovh.ui.findActivity
 import tomd.ovh.ui.theme.HubTheme
 
 class MainActivity : ComponentActivity() {
@@ -171,6 +171,13 @@ fun HubScreen(
                 resetKey++
                 // L'utilisateur a pu accorder la permission dans les réglages entre-temps.
                 hasPermission = UsageStats.hasPermission(context)
+
+                // Filet de sécurité des alarmes : le receiver se reprogramme lui-même,
+                // mais Android perd les alarmes au redémarrage, et l'utilisateur peut
+                // vider le stockage de l'app. Ouvrir Hub répare les deux cas.
+                if (config.isReminderEnabled()) {
+                    ReminderScheduler.scheduleNext(context, config.reminderIntervalMs())
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -325,17 +332,4 @@ fun HubScreenPreview() {
     HubTheme {
         HubScreen(config = AppConfig.from(LocalContext.current))
     }
-}
-
-/**
- * Remonte jusqu'à l'Activity qui contient ce Context.
- *
- * Le type de retour est `ComponentActivity` et non `android.app.Activity` : c'est
- * `ComponentActivity` qui implémente `LifecycleOwner`, donc lui seul expose `.lifecycle`.
- * Retourner le type parent ferait échouer la compilation.
- */
-private tailrec fun Context.findActivity(): ComponentActivity = when (this) {
-    is ComponentActivity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> error("Context sans Activity : $this")
 }
