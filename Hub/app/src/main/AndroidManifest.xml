@@ -2,6 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+      Android 11+ (API 30) : sans ce bloc, getLaunchIntentForPackage() renvoie null
+      même pour une app installée. Toute app qu'on compte lancer DOIT être déclarée ici.
+      Cette déclaration n'expose aucune donnée : elle dit juste "cette app m'intéresse".
+    -->
+    <queries>
+        <package android:name="com.instagram.android" />
+        <package android:name="com.zhiliaoapp.musically" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
