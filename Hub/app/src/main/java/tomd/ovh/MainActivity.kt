@@ -1,26 +1,44 @@
 package tomd.ovh
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import tomd.ovh.data.WatchedApp
 import tomd.ovh.data.WatchedApps
 import tomd.ovh.data.launchAppOrWarn
@@ -44,6 +62,21 @@ class MainActivity : ComponentActivity() {
 fun HubScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
+    // Incrémenté à chaque retour au premier plan. Utilisé comme clé de `remember`
+    // dans AppButton, ça remet tous les timers à zéro d'un coup.
+    var resetKey by remember { mutableIntStateOf(0) }
+
+    val lifecycleOwner = remember(context) { context.findActivity() }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                resetKey++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -58,32 +91,81 @@ fun HubScreen(modifier: Modifier = Modifier) {
         for (app in WatchedApps.all) {
             AppButton(
                 app = app,
-                onClick = { context.launchAppOrWarn(app) },
+                resetKey = resetKey,
+                onLaunch = { context.launchAppOrWarn(app) },
                 modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
 
+/**
+ * Bouton à friction : un premier clic lance un compte à rebours, le second clic
+ * (une fois la barre pleine) ouvre l'app.
+ *
+ * @param remainingMs millisecondes restantes. 0 = prêt à lancer.
+ * @param running     true pendant le compte à rebours.
+ */
 @Composable
 fun AppButton(
     app: WatchedApp,
-    onClick: () -> Unit,
+    resetKey: Int,
+    onLaunch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        contentPadding = PaddingValues(24.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+    var remainingMs by remember(app.packageName, resetKey) { mutableLongStateOf(app.frictionMs) }
+    var running by remember(app.packageName, resetKey) { mutableStateOf(false) }
+
+    // Relancé à chaque changement de `running`. La coroutine est annulée
+    // automatiquement si le bouton quitte l'écran.
+    LaunchedEffect(running, app.packageName) {
+        if (running) {
+            val end = SystemClock.elapsedRealtime() + app.frictionMs
+            while (true) {
+                val left = end - SystemClock.elapsedRealtime()
+                if (left <= 0L) {
+                    remainingMs = 0L
+                    running = false
+                    break
+                }
+                remainingMs = left
+                delay(32)
+            }
+        }
+    }
+
+    val progress = 1f - (remainingMs.toFloat() / app.frictionMs.toFloat()).coerceIn(0f, 1f)
+
+    Box(
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(app.trackColor)
+            .clickable {
+                if (running) return@clickable
+
+                if (remainingMs == 0L) {
+                    remainingMs = app.frictionMs
+                    onLaunch()
+                } else {
+                    running = true
+                }
+            }
     ) {
+        // CentreStart = la barre grandit depuis la gauche.
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxHeight()
+                .fillMaxWidth(progress)
+                .background(app.progressColor)
+        )
+
         Text(
             text = app.label,
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.align(Alignment.Center)
         )
     }
 }
@@ -94,4 +176,17 @@ fun HubScreenPreview() {
     HubTheme {
         HubScreen()
     }
+}
+
+/**
+ * Remonte jusqu'à l'Activity qui contient ce Context.
+ *
+ * Le type de retour est `ComponentActivity` et non `android.app.Activity` : c'est
+ * `ComponentActivity` qui implémente `LifecycleOwner`, donc lui seul expose `.lifecycle`.
+ * Retourner le type parent ferait échouer la compilation.
+ */
+private tailrec fun Context.findActivity(): ComponentActivity = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> error("Context sans Activity : $this")
 }
