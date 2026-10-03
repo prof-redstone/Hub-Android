@@ -66,8 +66,16 @@ object Reminder {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
+/**
      * Posts the reminder for [app].
+     *
+     * ⚠️ Only ever called while [app] is in the foreground (the receiver gates on
+     * that), so there is a single wording: the user is still on the app right now.
+     * An earlier version also had an "idle" variant and fired either way, which is
+     * what made notifications land minutes after the user had walked away.
+     *
+     * [todayMs] is the whole day's total, shown for context only — it is not what
+     * triggered the reminder.
      *
      * The notification id is derived from the package: two reminders for the same
      * app **replace** each other instead of stacking up. An app can therefore never

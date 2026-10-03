@@ -19,7 +19,7 @@ data class WatchedApp(
     val progressColor: Color = Color.White,
 )
 
-/** The list of target apps. Hardcoded for now, a settings screen will come in v1. */
+/** The list of target apps. Hardcoded, but each one is toggleable and renameable. */
 object WatchedApps {
     val all = listOf(
         WatchedApp(

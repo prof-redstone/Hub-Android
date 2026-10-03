@@ -21,7 +21,7 @@
     <!-- Settings screen : reminders -->
     <string name="settings_reminder_title">Screen time reminder</string>
     <string name="settings_reminder_subtitle">A notification when you go over your quota on an app. Swipeable, with no permanent notification.</string>
-    <string name="settings_reminder_interval">Frequency</string>
+    <string name="settings_reminder_threshold">Warn me after</string>
     <string name="settings_reminder_permission_needed">Allow notifications for Hub, otherwise no reminder can be shown.</string>
     <string name="settings_reminder_grant">Allow notifications</string>
     <string name="settings_reminder_usage_needed">Also grant screen time access in the Android settings.</string>
@@ -30,7 +30,7 @@
     <string name="reminder_channel_name">Screen time reminders</string>
     <string name="reminder_channel_description">Break notification, sent when you go over your quota on a watched app.</string>
     <string name="reminder_title">%1$s · %2$s today</string>
-    <string name="reminder_text">Take a few minutes off?</string>
+    <string name="reminder_text">Still scrolling. Take a break?</string>
 
     <!-- Messages -->
     <string name="not_installed">%1$s is not installed (or the package name is wrong)</string>

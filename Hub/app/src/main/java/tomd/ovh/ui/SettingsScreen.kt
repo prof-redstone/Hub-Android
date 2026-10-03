@@ -41,7 +41,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import tomd.ovh.R
 import tomd.ovh.data.AppConfig
-import tomd.ovh.data.REMINDER_INTERVAL_CHOICES_MS
+import tomd.ovh.data.REMINDER_THRESHOLD_CHOICES_MS
+import tomd.ovh.data.REMINDER_POLL_INTERVAL_MS
 import tomd.ovh.data.UsageStats
 import tomd.ovh.data.WatchedApp
 import tomd.ovh.data.WatchedApps
@@ -165,12 +166,12 @@ private fun ReminderSection(
                 onCheckedChange = { isOn ->
                     config.setReminderEnabled(isOn)
 
-                    // Enabling: we schedule the first pass one interval from now.
-                    // Disabling: we cancel, and we clear the reminders already posted —
-                    // otherwise the notification for an already crossed threshold
-                    // would stay in the shade.
+                    // Enabling: we schedule the first poll right away, at the poll
+                    // interval, NOT at the user's threshold. These are two different
+                    // values now, and mixing them up is what used to delay every
+                    // reminder by a full interval.
                     if (isOn) {
-                        ReminderScheduler.scheduleNext(context, config.reminderIntervalMs())
+                        ReminderScheduler.scheduleNext(context, REMINDER_POLL_INTERVAL_MS)
                     } else {
                         ReminderScheduler.cancel(context)
                         Reminder.clearAll(context, WatchedApps.all)
@@ -181,7 +182,7 @@ private fun ReminderSection(
 
         if (enabled && canReadUsage) {
             Text(
-                text = stringResource(R.string.settings_reminder_interval),
+                text = stringResource(R.string.settings_reminder_threshold),
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -190,14 +191,15 @@ private fun ReminderSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.horizontalScroll(rememberScrollState())
             ) {
-                for (choice in REMINDER_INTERVAL_CHOICES_MS) {
+                for (choice in REMINDER_THRESHOLD_CHOICES_MS) {
                     FilterChip(
-                        selected = config.reminderIntervalMs() == choice,
+                        selected = config.reminderThresholdMs() == choice,
                         onClick = {
-                            config.setReminderIntervalMs(choice)
-                            // We reschedule straight away: the pending alarm is
-                            // already on the old interval and cannot be replayed.
-                            ReminderScheduler.scheduleNext(context, choice)
+                            config.setReminderThresholdMs(choice)
+                            // We reschedule straight away: the pending poll is on the
+                            // old interval and cannot be replayed. Same poll
+                            // interval, not the threshold.
+                            ReminderScheduler.scheduleNext(context, REMINDER_POLL_INTERVAL_MS)
                         },
                         label = { Text("${choice / 60_000L} min") }
                     )

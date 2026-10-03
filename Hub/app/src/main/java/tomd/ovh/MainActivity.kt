@@ -52,6 +52,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import tomd.ovh.data.AppConfig
+import tomd.ovh.data.REMINDER_POLL_INTERVAL_MS
 import tomd.ovh.data.WatchedApp
 import tomd.ovh.data.WatchedApps
 import tomd.ovh.data.UsageStats
@@ -182,7 +183,7 @@ fun HubScreen(
                 // opening Hub repeatedly would silently delay every reminder. This
                 // re-arms only when there is genuinely nothing pending.
                 if (config.isReminderEnabled() && !ReminderScheduler.hasPending(context)) {
-                    ReminderScheduler.scheduleNext(context, config.reminderIntervalMs())
+                    ReminderScheduler.scheduleNext(context, REMINDER_POLL_INTERVAL_MS)
                 }
             }
         }
@@ -193,8 +194,14 @@ fun HubScreen(
     // queryEvents() is a disk read: we keep it out of the function body.
     LaunchedEffect(resetKey, hasPermission) {
         if (!hasPermission) return@LaunchedEffect
+        // ONE query for the whole screen. The per-app helper it replaced issued
+        // one full-day scan per app, all of them reading the very same rows.
+        val snapshot = UsageStats.todaySnapshot(
+            context,
+            WatchedApps.all.map { it.packageName }.toSet()
+        )
         usageMs = WatchedApps.all.associate { app ->
-            app.packageName to UsageStats.todayForegroundMs(context, app.packageName)
+            app.packageName to (snapshot.todayMs[app.packageName] ?: 0L)
         }
     }
 

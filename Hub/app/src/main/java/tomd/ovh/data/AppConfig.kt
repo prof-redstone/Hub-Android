@@ -8,22 +8,45 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * The reminder interval does double duty: it is both the period between two checks
- * and the amount of screen time to cross before a reminder fires.
+ * How much *continuous* screen time in one session before we interrupt the user.
  *
- * A single setting, so there is no way to end up with "I check every 5 min" and
- * "I warn after 10 min" disagreeing. The accepted consequence: at 10 min, a
- * reminder actually lands every 10 to 20 min of accumulated usage.
+ * Measured against the current session, not against the day's total: quitting the
+ * app closes the session, so the next time they open it the count starts from zero.
+ * That is the whole point — a reminder that lands minutes after they walked away is
+ * pure noise.
  *
  * ⚠️ Declared top-level rather than inside AppConfig's `companion object`: a
  * companion member has to be imported as `AppConfig.Companion.NAME`, which is
- * verbose. Top-level, `import tomd.ovh.data.REMINDER_INTERVAL_CHOICES_MS` is
- * enough — same approach as `startOfTodayMs` and `formatDuration` in UsageStats.kt.
+ * verbose. Top-level, `import tomd.ovh.data.REMINDER_THRESHOLD_CHOICES_MS` is
+ * enough — same approach as `formatDuration` in UsageStats.kt.
  */
-const val DEFAULT_REMINDER_INTERVAL_MS = 10L * 60_000L
+private const val DEFAULT_REMINDER_THRESHOLD_MS = 10L * 60_000L
 
-/** The intervals offered in the settings, in milliseconds. */
-val REMINDER_INTERVAL_CHOICES_MS = listOf(5L, 10L, 15L, 30L).map { it * 60_000L }
+/** The thresholds offered in the settings, in milliseconds. */
+val REMINDER_THRESHOLD_CHOICES_MS = listOf(5L, 10L, 15L, 30L).map { it * 60_000L }
+
+/**
+ * How often usage is sampled. **Independent from the user's threshold.**
+ *
+ * ⚠️ Why these are two different values: the threshold answers "how much screen
+ * time before we warn", the poll interval answers "how precisely can we notice".
+ * Tying them together was a mistake — with both at 10 min, the alarm can only ever
+ * observe usage *after* the threshold has already been crossed, so every reminder
+ * arrived late by up to a full interval. That is exactly what made the notification
+ * land minutes after the user had left the app.
+ *
+ * Polling faster than the threshold means the warning fires while the app is still
+ * in the foreground, which is the only moment where interrupting the user is any
+ * use.
+ *
+ * Battery: one exact alarm per minute. Doze caps exact alarms at roughly one per 9
+ * minutes per app, so this cadence only actually materialises while the device is
+ * awake and in use — which is exactly when the reminder is worth having. Each poll
+ * is a single shared `queryEvents` over the day (see `UsageStats.todaySnapshot`).
+ * Raise it if it shows up in the battery stats; the only thing lost is how late a
+ * reminder can land.
+ */
+const val REMINDER_POLL_INTERVAL_MS = 1L * 60_000L
 
 /**
  * User customisation: which apps to show, and under what label.
@@ -47,7 +70,12 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
         private const val KEY_VISIBLE = "visible_"
         private const val KEY_LABEL = "label_"
         private const val KEY_REMINDER_ENABLED = "reminder_enabled"
-        private const val KEY_REMINDER_INTERVAL = "reminder_interval_ms"
+
+        // ⚠️ The *value* still says "interval" although the setting is now a
+        // threshold. Renaming the persisted string would silently reset the user's
+        // choice to the default on next launch. Data beats naming; the constant is
+        // what matters for readability.
+        private const val KEY_REMINDER_THRESHOLD = "reminder_interval_ms"
 
         /**
          * Builds an instance from a [Context].
@@ -123,16 +151,16 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
         reminder = reminder.copy(enabled = enabled)
     }
 
-    fun reminderIntervalMs(): Long = reminder.intervalMs
+    fun reminderThresholdMs(): Long = reminder.thresholdMs
 
-    fun setReminderIntervalMs(intervalMs: Long) {
-        prefs.edit().putLong(KEY_REMINDER_INTERVAL, intervalMs).apply()
-        reminder = reminder.copy(intervalMs = intervalMs)
+    fun setReminderThresholdMs(thresholdMs: Long) {
+        prefs.edit().putLong(KEY_REMINDER_THRESHOLD, thresholdMs).apply()
+        reminder = reminder.copy(thresholdMs = thresholdMs)
     }
 
     private fun readReminderFromPrefs() = ReminderSettings(
         enabled = prefs.getBoolean(KEY_REMINDER_ENABLED, false),
-        intervalMs = prefs.getLong(KEY_REMINDER_INTERVAL, DEFAULT_REMINDER_INTERVAL_MS),
+        thresholdMs = prefs.getLong(KEY_REMINDER_THRESHOLD, DEFAULT_REMINDER_THRESHOLD_MS),
     )
 
     private fun update(packageName: String, block: (Entry) -> Entry) {
@@ -166,6 +194,6 @@ class AppConfig private constructor(private val prefs: SharedPreferences) {
      */
     private data class ReminderSettings(
         val enabled: Boolean = false,
-        val intervalMs: Long = DEFAULT_REMINDER_INTERVAL_MS,
+        val thresholdMs: Long = DEFAULT_REMINDER_THRESHOLD_MS,
     )
 }

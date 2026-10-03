@@ -38,26 +38,29 @@ object ReminderScheduler {
         )
 
     /**
-     * Schedules the next pass in [intervalMs].
+     * Schedules the next poll in [delayMs].
+     *
+     * ⚠️ This is the *poll* delay, never the user's threshold. See
+     * `REMINDER_POLL_INTERVAL_MS` for why the two are separate.
      *
      * `setExactAndAllowWhileIdle`: fires even while the device is dozing, which is
      * what sets this alarm apart from ordinary ones. Under Doze, Android spaces out
-     * exact wakeups to roughly one every 9 minutes — a shorter interval would be
+     * exact wakeups to roughly one every 9 minutes — a shorter delay would be
      * pointless, the alarm would simply be pushed back.
      *
      * `ELAPSED_REALTIME_WAKEUP`: counts from boot, so it is immune to a change of
      * system time or time zone. `WAKEUP`: wakes the CPU.
      */
-    fun scheduleNext(context: Context, intervalMs: Long) {
+    fun scheduleNext(context: Context, delayMs: Long) {
         val manager = context.getSystemService(AlarmManager::class.java) ?: return
 
-        val triggerAt = SystemClock.elapsedRealtime() + intervalMs
+        val triggerAt = SystemClock.elapsedRealtime() + delayMs
         manager.setExactAndAllowWhileIdle(
             AlarmManager.ELAPSED_REALTIME_WAKEUP,
             triggerAt,
             pendingIntent(context)
         )
-        Log.d(TAG, "scheduleNext(): +${intervalMs / 60_000L}min, fires in ${(triggerAt - SystemClock.elapsedRealtime()) / 1000}s")
+        Log.d(TAG, "scheduleNext(): next poll in ${(triggerAt - SystemClock.elapsedRealtime()) / 1000}s")
     }
 
     /** Cancels the scheduled wakeup, if there is one. */
