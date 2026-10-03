@@ -3,6 +3,7 @@ package tomd.ovh.data
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import tomd.ovh.R
 
 /**
  * Lance une app par son package name.
@@ -25,7 +26,7 @@ fun Context.launchAppOrWarn(app: WatchedApp) {
     if (!launchApp(app)) {
         Toast.makeText(
             this,
-            "${app.label} n'est pas installée (ou le package est incorrect)",
+            getString(R.string.not_installed, app.label),
             Toast.LENGTH_LONG
         ).show()
     }

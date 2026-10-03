@@ -28,6 +28,14 @@ object WatchedApps {
             trackColor = Color(0xFF202020),
             progressColor = Color(0xFF303030),
         ),
+        // Feurstagram : l'APK Instagram officiel patché (github.com/jean-voila/FeurStagram).
+        // Variante « clone », installée à côté de l'officiel → package distinct.
+        WatchedApp(
+            label = "Feurstagram",
+            packageName = "com.instagram.android.feurstagram",
+            trackColor = Color(0xFF202020),
+            progressColor = Color(0xFF303030),
+        ),
         WatchedApp(
             label = "TikTok",
             packageName = "com.zhiliaoapp.musically",

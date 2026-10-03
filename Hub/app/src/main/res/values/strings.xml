@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">Hub</string>
+
+    <!-- Titres d'écran -->
+    <string name="hub_title">Hub</string>
+    <string name="settings_title">Réglages</string>
+
+    <!-- Actions de la barre du haut -->
+    <string name="action_settings">Réglages</string>
+    <string name="action_back">Retour</string>
+
+    <!-- Écran Hub -->
+    <string name="permission_usage_stats">Autoriser la lecture du temps d\'écran</string>
+    <string name="hub_empty">Aucune app affichée. Ajoute-en depuis les réglages.</string>
+
+    <!-- Écran Réglages -->
+    <string name="settings_intro">Coche les apps à garder sur l\'écran principal, et renomme-les si tu veux.</string>
+    <string name="settings_custom_label">Libellé du bouton</string>
+    <string name="settings_reset_label">Rétablir le libellé d\'origine</string>
+    <string name="settings_show_all">Tout afficher</string>
+    <string name="settings_hide_all">Tout masquer</string>
+
+    <!-- Messages -->
+    <string name="not_installed">%1$s n\'est pas installée (ou le package est incorrect)</string>
 </resources>
